@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Cross-it!</title>
+    <style>
+        .header {
+            display: flex;  /* Makes the container a flex container */
+            justify-content: space-between;  /* Aligns elements at both ends */
+            align-items: center;  /* Vertically aligns elements in the middle */
+            padding: 0 10px;  /* Optional padding for visual spacing */
+            /*border-bottom: 1px solid gray;  !* Optional border for separation *!*/
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat({{ size }}, 50px);  /* Number of columns */
+            grid-template-rows: repeat({{ size }}, 50px);  /* Number of rows */
+            gap: 5px;  /* Spacing between cells */
+        }
+
+        .grid-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;  /* Center content within cell */
+            border: 1px solid black;
+            background-color: lightgray;  /* Visual enhancement */
+            cursor: pointer;  /* Change cursor to pointer on hover */
+        }
+        .grid-cell.empty {
+            background-color: lightgray;
+        }
+        .grid-cell.player0 {
+            background-color: darkred;
+        }
+        .grid-cell.player1 {
+            background-color: royalblue;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Cross-it!</h1>
+        <span>
+            Player: <span id="player-number"></span>
+        </span>
+    </div>
+    <div class="game-grid" id="gameGrid">
+        {% for row_idx in range(size) %}
+            {% for col_idx in range(size) %}
+                <div
+                    class="grid-cell
+                    {{ 'empty' if field[row_idx][col_idx] == -1
+                        else 'player' ~ field[row_idx][col_idx] }}"
+                    data-row="{{ row_idx }}" data-column="{{ col_idx }}"
+                >
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+
+    <script>
+        function getPlayerNumber() {
+            fetch('/player')
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    const playerNumber = data;
+                    console.log(`Your player number is: ${playerNumber}`);
+                    localStorage.setItem('player_number', playerNumber);  // Store in localStorage
+                    document.getElementById('player-number').innerHTML = playerNumber;
+                })
+                .catch(error => alert(`Error: ${error}`));
+        }
+
+        function refreshField() {
+            fetch('/field')
+                .then(response => response.json())
+                .then(field => {
+                    console.log(field);
+                    // TODO: Output current player
+                    for (let row = 0; row < {{ size }}; row++) {
+                        for (let col = 0; col < {{ size }}; col++) {
+                            console.log(row, col);
+                            const cellDiv = document.querySelector(
+                                `.grid-cell[data-row="${row}"][data-column="${col}"]`
+                            );
+                            cellDiv.classList = 'grid-cell';
+                            // cellDiv.innerHTML = field[row][col];
+                            if (field[row][col] === -1) {
+                                cellDiv.classList.add('empty');
+                            }
+                            else {
+                                cellDiv.classList.add(`player${field[row][col]}`);
+                            }
+                        }
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Get player number when the page loads (if not already stored)
+        if (!localStorage.getItem('player_number')) {
+            getPlayerNumber();
+        }
+        else {
+            document.getElementById('player-number').innerHTML = localStorage.getItem('player_number');
+        }
+
+        // Get all grid cells
+        const cells = document.querySelectorAll('.grid-cell');
+
+        // Add click event to each cell
+        cells.forEach(cell => {
+            cell.addEventListener('click', function() {
+                const row = this.getAttribute('data-row');
+                const column = this.getAttribute('data-column');
+
+                fetch('/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        coords: [row, column],
+                        player: localStorage.getItem('player_number'),
+                    }),  // Pass coordinates
+                })
+                .then(response => response.json())
+                .then(data => {
+                    refreshField();
+                    // TODO: Output error
+                    console.log(data.message);  // Process server response
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            });
+        });
+
+        setInterval(refreshField, 1000);
+    </script>
+</body>
+</html>
