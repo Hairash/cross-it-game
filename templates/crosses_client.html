@@ -11,6 +11,10 @@
             /*border-bottom: 1px solid gray;  !* Optional border for separation *!*/
         }
 
+        .hidden {
+            display: none;
+        }
+
         .game-grid {
             display: grid;
             grid-template-columns: repeat({{ size }}, 50px);  /* Number of columns */
@@ -42,9 +46,14 @@
         <h1>Cross-it!</h1>
         <span>
             Player: <span id="player-number"></span>
+            <button type='button' id='reset-player-num-btn'>Reset</button>
         </span>
     </div>
-    <div class="game-grid" id="gameGrid">
+    <div>
+        <span id="message-label"></span>
+        <button type='button' id='start-over-btn' class='hidden'>Start over</button>
+    </div>
+    <div class="game-grid" id="game-grid">
         {% for row_idx in range(size) %}
             {% for col_idx in range(size) %}
                 <div
@@ -63,24 +72,24 @@
             fetch('/player')
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
+                    // console.log(data);
                     const playerNumber = data;
                     console.log(`Your player number is: ${playerNumber}`);
-                    localStorage.setItem('player_number', playerNumber);  // Store in localStorage
+                    localStorage.setItem('playerNumber', playerNumber);  // Store in localStorage
                     document.getElementById('player-number').innerHTML = playerNumber;
                 })
                 .catch(error => alert(`Error: ${error}`));
         }
 
         function refreshField() {
-            fetch('/field')
+            fetch('/game')
                 .then(response => response.json())
-                .then(field => {
-                    console.log(field);
-                    // TODO: Output current player
+                .then(gameData => {
+                    // console.log(field);
+                    let field = gameData['field'];
                     for (let row = 0; row < {{ size }}; row++) {
                         for (let col = 0; col < {{ size }}; col++) {
-                            console.log(row, col);
+                            // console.log(row, col);
                             const cellDiv = document.querySelector(
                                 `.grid-cell[data-row="${row}"][data-column="${col}"]`
                             );
@@ -94,16 +103,46 @@
                             }
                         }
                     }
+                    if (gameData['current_player'] !== gameState.currentPlayer) {
+                        gameState.currentPlayer = gameData['current_player'];
+                        if (String(gameState.currentPlayer) === document.getElementById('player-number').innerHTML)
+                            document.getElementById('message-label').innerHTML = 'Your turn';
+                    }
+                    if (!gameState.isEndGame && gameData['winner'] >= 0) {
+                        gameState.isEndGame = true;
+                        if (String(gameData['winner']) === document.getElementById('player-number').innerHTML)
+                            alert('You win!')
+                        else
+                            alert('You lose!')
+                        document.getElementById('start-over-btn').classList.remove('hidden');
+                        document.getElementById('message-label').innerHTML = '';
+                    }
+                    if (gameData['new_game']) {
+                        initGame();
+                    }
                 })
                 .catch(error => console.error('Error:', error));
         }
 
+        function initGame() {
+            startOverBtn.classList.add('hidden');
+            gameState = {
+                currentPlayer: -1,
+                isEndGame: false,
+            }
+        }
+
+        let gameState = {}
+        let startOverBtn = document.getElementById('start-over-btn');
+
+        initGame();
+
         // Get player number when the page loads (if not already stored)
-        if (!localStorage.getItem('player_number')) {
+        if (!localStorage.getItem('playerNumber')) {
             getPlayerNumber();
         }
         else {
-            document.getElementById('player-number').innerHTML = localStorage.getItem('player_number');
+            document.getElementById('player-number').innerHTML = localStorage.getItem('playerNumber');
         }
 
         // Get all grid cells
@@ -122,7 +161,7 @@
                     },
                     body: JSON.stringify({
                         coords: [row, column],
-                        player: localStorage.getItem('player_number'),
+                        player: localStorage.getItem('playerNumber'),
                     }),  // Pass coordinates
                 })
                 .then(response => response.json())
@@ -130,11 +169,35 @@
                     refreshField();
                     // TODO: Output error
                     console.log(data.message);  // Process server response
+                    document.getElementById('message-label').innerHTML = data.message;
+                    if (data.message === 'Game over') {
+                        document.getElementById('start-over-btn').classList.remove('hidden');
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                 });
             });
+        });
+
+        resetPlayerNumBtn = document.getElementById('reset-player-num-btn');
+        resetPlayerNumBtn.addEventListener('click', function() {
+            getPlayerNumber();
+        });
+
+        startOverBtn.addEventListener('click', function() {
+            fetch('/new_game', {
+                method: 'POST',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // console.log(data);
+                    // const playerNumber = data;
+                    // console.log(`Your player number is: ${playerNumber}`);
+                    // localStorage.setItem('playerNumber', playerNumber);  // Store in localStorage
+                    // document.getElementById('player-number').innerHTML = playerNumber;
+                })
+                .catch(error => alert(`Error: ${error}`));
         });
 
         setInterval(refreshField, 1000);

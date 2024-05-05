@@ -1,11 +1,8 @@
-import random
-
-from flask import Flask, jsonify, redirect, request, render_template, url_for
+from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
 FIELD_SIZE = 10
-
 
 
 def generate_field(n):
@@ -30,10 +27,32 @@ def make_move(field, x0, y0, player):
         field[x][y] = player
 
 
+def is_end_game(field):
+    for x0 in range(1, FIELD_SIZE - 1):
+        for y0 in range(1, FIELD_SIZE - 1):
+            coords_to_check_list = [
+                (x0, y0),
+                (x0 - 1, y0),
+                (x0 + 1, y0),
+                (x0, y0 - 1),
+                (x0, y0 + 1),
+            ]
+            is_potential_move = True
+            for x, y in coords_to_check_list:
+                if field[x][y] != -1:
+                    is_potential_move = False
+                    break
+            if is_potential_move:
+                return False
+    return True
+
+
 app_data = {
     'field': generate_field(FIELD_SIZE),
     'current_player': 0,
     'players_num': 0,
+    'winner': -1,
+    'new_game': True,
 }
 
 
@@ -42,9 +61,9 @@ def home():
     return render_template('crosses_client.html', field=app_data['field'], size=FIELD_SIZE)
 
 
-@app.route('/field', methods=['GET'])
+@app.route('/game', methods=['GET'])
 def get_field():
-    return jsonify(app_data['field'])
+    return jsonify(app_data)
 
 
 @app.route('/move', methods=['POST'])
@@ -62,6 +81,10 @@ def handle_move():
     except Exception as e:
         print(e)
         return jsonify({'message': str(e)})
+    app_data['new_game'] = False
+    if is_end_game(app_data['field']):
+        app_data['winner'] = app_data['current_player']
+        return jsonify({'message': 'Game over'})
     app_data['current_player'] = (player + 1) % 2
     return jsonify({'message': 'Move done'})
 
@@ -70,7 +93,18 @@ def handle_move():
 def get_player():
     player = app_data['players_num']
     app_data['players_num'] += 1
+    app_data['players_num'] %= 2
     return str(player)
+
+
+@app.route('/new_game', methods=['POST'])
+def start_new_game():
+    app_data['field'] = generate_field(FIELD_SIZE)
+    app_data['current_player'] = 0
+    app_data['players_num'] = 0
+    app_data['winner'] = -1
+    app_data['new_game'] = True
+    return jsonify({'message': 'New game started'})
 
 
 if __name__ == '__main__':
