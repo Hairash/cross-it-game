@@ -2,7 +2,21 @@
 <html lang="en">
 <head>
     <title>Cross-it!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <style>
+        #container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "Ubuntu Mono", monospace;
+        }
+
+        #content {
+            width: 520px;
+        }
+
         .header {
             display: flex;  /* Makes the container a flex container */
             justify-content: space-between;  /* Aligns elements at both ends */
@@ -42,29 +56,33 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Cross-it!</h1>
-        <span>
-            Player: <span id="player-number"></span>
-            <button type='button' id='reset-player-num-btn'>Reset</button>
-        </span>
-    </div>
-    <div>
-        <span id="message-label"></span>
-        <button type='button' id='start-over-btn' class='hidden'>Start over</button>
-    </div>
-    <div class="game-grid" id="game-grid">
-        {% for row_idx in range(size) %}
-            {% for col_idx in range(size) %}
-                <div
-                    class="grid-cell
-                    {{ 'empty' if field[row_idx][col_idx] == -1
-                        else 'player' ~ field[row_idx][col_idx] }}"
-                    data-row="{{ row_idx }}" data-column="{{ col_idx }}"
-                >
-                </div>
-            {% endfor %}
-        {% endfor %}
+    <div id="container">
+        <div id="content">
+            <div class="header">
+                <h1>Cross-it!</h1>
+                <span>
+                    Player: <span id="player-number"></span>
+                    <button type='button' id='reset-player-num-btn'>Reset</button>
+                </span>
+            </div>
+            <div>
+                <span id="message-label"></span>
+                <button type='button' id='start-over-btn' class='hidden'>Start over</button>
+            </div>
+            <div class="game-grid" id="game-grid">
+                {% for row_idx in range(size) %}
+                    {% for col_idx in range(size) %}
+                        <div
+                            class="grid-cell
+                            {{ 'empty' if field[row_idx][col_idx] == -1
+                                else 'player' ~ field[row_idx][col_idx] }}"
+                            data-row="{{ row_idx }}" data-column="{{ col_idx }}"
+                        >
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
     <script>
