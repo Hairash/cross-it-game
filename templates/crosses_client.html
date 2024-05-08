@@ -2,33 +2,7 @@
 <html lang="en">
 <head>
     <title>Cross-it!</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <style>
-        #container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: "Ubuntu Mono", monospace;
-        }
-
-        #content {
-            width: 520px;
-        }
-
-        .header {
-            display: flex;  /* Makes the container a flex container */
-            justify-content: space-between;  /* Aligns elements at both ends */
-            align-items: center;  /* Vertically aligns elements in the middle */
-            padding: 0 10px;  /* Optional padding for visual spacing */
-            /*border-bottom: 1px solid gray;  !* Optional border for separation *!*/
-        }
-
-        .hidden {
-            display: none;
-        }
-
         .game-grid {
             display: grid;
             grid-template-columns: repeat({{ size }}, 50px);  /* Number of columns */
@@ -44,9 +18,6 @@
             background-color: lightgray;  /* Visual enhancement */
             cursor: pointer;  /* Change cursor to pointer on hover */
         }
-        .grid-cell.empty {
-            background-color: lightgray;
-        }
         .grid-cell.player0 {
             background-color: darkred;
         }
@@ -56,111 +27,41 @@
     </style>
 </head>
 <body>
-    <div id="container">
-        <div id="content">
-            <div class="header">
-                <h1>Cross-it!</h1>
-                <span>
-                    Player: <span id="player-number"></span>
-                    <button type='button' id='reset-player-num-btn'>Reset</button>
-                </span>
-            </div>
-            <div>
-                <span id="message-label"></span>
-                <button type='button' id='start-over-btn' class='hidden'>Start over</button>
-            </div>
-            <div class="game-grid" id="game-grid">
-                {% for row_idx in range(size) %}
-                    {% for col_idx in range(size) %}
-                        <div
-                            class="grid-cell
-                            {{ 'empty' if field[row_idx][col_idx] == -1
-                                else 'player' ~ field[row_idx][col_idx] }}"
-                            data-row="{{ row_idx }}" data-column="{{ col_idx }}"
-                        >
-                        </div>
-                    {% endfor %}
-                {% endfor %}
-            </div>
-        </div>
+    <h1>Cross-it!</h1>
+    <div>
+        Player: <input type="number" id="player-number" value="0">
+        <button type='button' id='start-over-btn' class='hidden'>Start over</button>
+    </div>
+    <div class="game-grid" id="game-grid">
+        {% for row_idx in range(size) %}
+            {% for col_idx in range(size) %}
+                <div
+                    class="grid-cell"
+                    data-row="{{ row_idx }}" data-column="{{ col_idx }}"
+                >
+                </div>
+            {% endfor %}
+        {% endfor %}
     </div>
 
     <script>
-        function getPlayerNumber() {
-            fetch('/player')
-                .then(response => response.json())
-                .then(data => {
-                    // console.log(data);
-                    const playerNumber = data;
-                    console.log(`Your player number is: ${playerNumber}`);
-                    localStorage.setItem('playerNumber', playerNumber);  // Store in localStorage
-                    document.getElementById('player-number').innerHTML = playerNumber;
-                })
-                .catch(error => alert(`Error: ${error}`));
-        }
-
         function refreshField() {
             fetch('/game')
                 .then(response => response.json())
-                .then(gameData => {
-                    // console.log(field);
-                    let field = gameData['field'];
+                .then(field => {
                     for (let row = 0; row < {{ size }}; row++) {
                         for (let col = 0; col < {{ size }}; col++) {
-                            // console.log(row, col);
                             const cellDiv = document.querySelector(
                                 `.grid-cell[data-row="${row}"][data-column="${col}"]`
                             );
-                            cellDiv.classList = 'grid-cell';
-                            // cellDiv.innerHTML = field[row][col];
-                            if (field[row][col] === -1) {
-                                cellDiv.classList.add('empty');
-                            }
-                            else {
+                            cellDiv.className = 'grid-cell';
+                            if (field[row][col] !== -1) {
                                 cellDiv.classList.add(`player${field[row][col]}`);
                             }
                         }
                     }
-                    if (gameData['current_player'] !== gameState.currentPlayer) {
-                        gameState.currentPlayer = gameData['current_player'];
-                        if (String(gameState.currentPlayer) === document.getElementById('player-number').innerHTML)
-                            document.getElementById('message-label').innerHTML = 'Your turn';
-                    }
-                    if (!gameState.isEndGame && gameData['winner'] >= 0) {
-                        gameState.isEndGame = true;
-                        if (String(gameData['winner']) === document.getElementById('player-number').innerHTML)
-                            alert('You win!')
-                        else
-                            alert('You lose!')
-                        document.getElementById('start-over-btn').classList.remove('hidden');
-                        document.getElementById('message-label').innerHTML = '';
-                    }
-                    if (gameData['new_game']) {
-                        initGame();
-                    }
                 })
                 .catch(error => console.error('Error:', error));
-        }
-
-        function initGame() {
-            startOverBtn.classList.add('hidden');
-            gameState = {
-                currentPlayer: -1,
-                isEndGame: false,
-            }
-        }
-
-        let gameState = {}
-        let startOverBtn = document.getElementById('start-over-btn');
-
-        initGame();
-
-        // Get player number when the page loads (if not already stored)
-        if (!localStorage.getItem('playerNumber')) {
-            getPlayerNumber();
-        }
-        else {
-            document.getElementById('player-number').innerHTML = localStorage.getItem('playerNumber');
         }
 
         // Get all grid cells
@@ -178,19 +79,14 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        coords: [row, column],
-                        player: localStorage.getItem('playerNumber'),
-                    }),  // Pass coordinates
+                        coords: [row, column],  // Pass coordinates
+                        player: document.getElementById('player-number').value,
+                    }),
                 })
                 .then(response => response.json())
                 .then(data => {
                     refreshField();
-                    // TODO: Output error
-                    console.log(data.message);  // Process server response
-                    document.getElementById('message-label').innerHTML = data.message;
-                    if (data.message === 'Game over') {
-                        document.getElementById('start-over-btn').classList.remove('hidden');
-                    }
+                    console.log(data.message);
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -198,23 +94,12 @@
             });
         });
 
-        resetPlayerNumBtn = document.getElementById('reset-player-num-btn');
-        resetPlayerNumBtn.addEventListener('click', function() {
-            getPlayerNumber();
-        });
-
-        startOverBtn.addEventListener('click', function() {
+        document.getElementById('start-over-btn').addEventListener('click', function() {
             fetch('/new_game', {
                 method: 'POST',
             })
                 .then(response => response.json())
-                .then(data => {
-                    // console.log(data);
-                    // const playerNumber = data;
-                    // console.log(`Your player number is: ${playerNumber}`);
-                    // localStorage.setItem('playerNumber', playerNumber);  // Store in localStorage
-                    // document.getElementById('player-number').innerHTML = playerNumber;
-                })
+                .then(data => {})
                 .catch(error => alert(`Error: ${error}`));
         });
 
